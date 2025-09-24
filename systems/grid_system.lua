@@ -161,15 +161,42 @@ return function(app)
     if not ray then
       return
     end
-    local hit, t = app.util.rayPlane(ray.origin, ray.direction, { 0, 0, 0 }, { 0, 1, 0 })
-    if hit then
-      grid.hover.world[1], grid.hover.world[2], grid.hover.world[3] = hit[1], hit[2], hit[3]
-      local cx, cy = grid:worldToCell(hit[1], hit[3])
-      grid.hover.x = cx
-      grid.hover.y = cy
-      grid.hover.state = grid:isWithin(cx, cy) and 'within' or 'out'
-      app.events:emit('grid:hover', grid.hover)
+    local hit = app.util.rayPlane(ray.origin, ray.direction, { 0, 0, 0 }, { 0, 1, 0 })
+    if not hit then
+      return
     end
+
+    grid.hover.world[1], grid.hover.world[2], grid.hover.world[3] = hit[1], hit[2], hit[3]
+    local cx, cy = grid:worldToCell(hit[1], hit[3])
+    grid.hover.x = cx
+    grid.hover.y = cy
+    local within = grid:isWithin(cx, cy)
+    grid.hover.state = within and 'within' or 'out'
+
+    if within then
+      if grid.currentHover and (grid.currentHover.x ~= cx or grid.currentHover.y ~= cy) then
+        local previous = getCell(grid.currentHover.x, grid.currentHover.y)
+        if previous.highlight == 'hover' then
+          previous.highlight = 'none'
+        end
+        grid.currentHover = nil
+      end
+      if not grid.currentHover then
+        local cell = getCell(cx, cy)
+        cell.highlight = 'hover'
+        grid.currentHover = { x = cx, y = cy }
+      end
+    else
+      if grid.currentHover then
+        local previous = getCell(grid.currentHover.x, grid.currentHover.y)
+        if previous.highlight == 'hover' then
+          previous.highlight = 'none'
+        end
+        grid.currentHover = nil
+      end
+    end
+
+    app.events:emit('grid:hover', grid.hover)
   end
 
   function system:draw(pass)
@@ -184,15 +211,22 @@ return function(app)
         tint = { 0.9, 0.8, 0.3, 0.2 }
       elseif cell.highlight == 'preview' then
         tint = { 0.3, 0.6, 0.9, 0.25 }
+      elseif cell.highlight == 'hover' then
+        tint = { 0.96, 0.82, 0.38, 0.45 }
       end
       if tint then
+        pass:push('state')
+        pass:setCullMode('none')
         pass:setColor(tint[1], tint[2], tint[3], tint[4])
-        pass:plane(wx, 0.02, wz, grid.cellSize, grid.cellSize, math.pi / 2, 1, 0, 0)
+        pass:plane(wx, 0.035, wz, grid.cellSize, grid.cellSize, -math.pi / 2, 1, 0, 0)
+        pass:pop('state')
       end
     end)
 
     local minX, maxX = grid.bounds.minX - 0.5, grid.bounds.maxX + 0.5
     local minZ, maxZ = grid.bounds.minY - 0.5, grid.bounds.maxY + 0.5
+    pass:push('state')
+    pass:setCullMode('none')
     pass:setColor(1, 1, 1, 0.08)
     for x = grid.bounds.minX, grid.bounds.maxX + 1 do
       local wx = x - 0.5
@@ -202,6 +236,7 @@ return function(app)
       local wz = z - 0.5
       pass:line(minX, 0.025, wz, maxX, 0.025, wz)
     end
+    pass:pop('state')
 
     pass:setColor(1, 1, 1, 1)
   end

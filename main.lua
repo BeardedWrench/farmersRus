@@ -112,9 +112,6 @@ function lovr.update(dt)
   end
 
   app.time:update(dt)
-  if app.log then
-    app.log:info(string.format('Frame dt=%.4f', dt))
-  end
   app.input:beginFrame(app.time:getDt())
   app.scenes:update(app.time:getDt())
   app.ecs:update(app.time:getDt())
