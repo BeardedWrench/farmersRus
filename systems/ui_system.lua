@@ -1,5 +1,8 @@
-local InventoryLib = require 'components.inventory'
-local WalletLib = require 'components.wallet'
+local Theme = require 'ui.theme'
+local UIManager = require 'ui.manager'
+local IconRenderer = require 'ui.icon_renderer'
+local HudUI = require 'ui.hud'
+local InventoryUI = require 'ui.inventory'
 
 return function(app)
   local events = app.events
@@ -11,49 +14,51 @@ return function(app)
   }
 
   local font
-  local showInventory = false
+
+  local function loadFont()
+    local fontPath = Theme.font
+    if fontPath and lovr.filesystem.isFile(fontPath) then
+      return lovr.graphics.newFont(fontPath, 32)
+    end
+    return lovr.graphics.newFont(32)
+  end
 
   function system:init()
-    if lovr.filesystem.isFile('assets/fonts/lucon.ttf') then
-      font = lovr.graphics.newFont('assets/fonts/lucon.ttf', 32)
-    else
-      font = lovr.graphics.newFont(32)
-    end
+    font = loadFont()
     if font then
       font:setPixelDensity(1)
     end
+
     self.viewMatrix = lovr.math.newMat4()
     self.projectionMatrix = lovr.math.newMat4()
     self.lastWidth, self.lastHeight = nil, nil
 
+    self.ui = UIManager.new(app)
+    self.icons = IconRenderer.new(app)
+    self.hud = HudUI.create(app)
+    self.inventoryUI = InventoryUI.create(app)
+    if font then
+      self.ui:setFont(font)
+    end
+
     events:on('input:keypressed', function(key)
       if key == 'i' then
-        showInventory = not showInventory
+        self.inventoryUI:toggle()
       elseif key == 't' then
         local nextScene = app.scenes:getAlternate()
         if nextScene then
           events:emit('scene:travel', nextScene)
         end
-      elseif key == 'escape' then
-        -- Placeholder for pause menu toggle
       end
     end)
   end
 
-  local function buildHotbarText(playerEntity)
-    local tool = playerEntity and app.ecs:getComponent(playerEntity, 'tool')
-    local current = tool and tool.type or 'shovel'
-    local lines = {
-      'Tools: [1] Shovel  [2] Watering  [3] Seed  [4] Harvest',
-      ('Current: %s'):format(current)
-    }
-    local wallet = app.inventory and app.inventory:getWallet()
-    if wallet then
-      lines[#lines + 1] = ('Money: %d'):format(wallet.balance)
+  local function ensureProjection(self, width, height)
+    if width ~= self.lastWidth or height ~= self.lastHeight then
+      self.projectionMatrix:orthographic(0, width, height, 0, -10, 10)
+      self.viewMatrix:identity()
+      self.lastWidth, self.lastHeight = width, height
     end
-    lines[#lines + 1] = 'Press I to view inventory'
-    lines[#lines + 1] = 'Press T to travel between Farm and Town'
-    return table.concat(lines, '\n')
   end
 
   function system:draw(pass)
@@ -62,11 +67,7 @@ return function(app)
     end
 
     local width, height = lovr.system.getWindowDimensions()
-    if width ~= self.lastWidth or height ~= self.lastHeight then
-      self.projectionMatrix:orthographic(0, width, height, 0, -10, 10)
-      self.viewMatrix:identity()
-      self.lastWidth, self.lastHeight = width, height
-    end
+    ensureProjection(self, width, height)
 
     pass:push('state')
     pass:setDepthTest()
@@ -74,43 +75,14 @@ return function(app)
     self.viewMatrix:identity()
     pass:setViewPose(1, self.viewMatrix)
     pass:setProjection(1, self.projectionMatrix)
-
-    local margin = 24
-    local panelW, panelH = 320, 160
-    local panelX = margin + panelW * 0.5
-    local panelY = height - (margin + panelH * 0.5)
-    pass:setColor(0.1, 0.1, 0.12, 0.9)
-    pass:plane(panelX, panelY, 0, panelW, panelH)
-
-    pass:setColor(1, 1, 1, 1)
     pass:setFont(font)
-    local playerEntity = app.inventory and app.inventory:getPlayer() or nil
-    local hudText = buildHotbarText(playerEntity)
-    pass:text(hudText, panelX - panelW * 0.5 + 16, panelY - panelH * 0.5 + 28, 0, 0.65)
 
-    if showInventory then
-      local invPanelW, invPanelH = 360, 320
-      local invX = width - (margin + invPanelW * 0.5)
-      local invY = height - (margin + invPanelH * 0.5)
-      pass:setColor(0.12, 0.12, 0.15, 0.92)
-      pass:plane(invX, invY, 0, invPanelW, invPanelH)
-      pass:setColor(1, 1, 1, 1)
-      pass:setFont(font)
-      local inv = app.inventory and app.inventory:getInventory()
-      local y = invY - invPanelH * 0.5 + 48
-      pass:text('Inventory', invX - invPanelW * 0.5 + 24, y, 0, 0.72)
-      y = y + 34
-      if inv and #inv.slots > 0 then
-        for _, slot in ipairs(inv.slots) do
-          local line = string.format('- %s x%d', slot.id, slot.qty)
-          pass:text(line, invX - invPanelW * 0.5 + 24, y, 0, 0.6)
-          y = y + 24
-        end
-      else
-        pass:text('(empty)', invX - invPanelW * 0.5 + 24, y, 0, 0.6)
-      end
-    end
+    self.ui:begin(width, height)
 
+    self.hud:render(self.ui)
+    self.inventoryUI:render(self.ui, self.icons, width)
+
+    self.ui:draw(pass)
     pass:pop('state')
   end
 
