@@ -34,11 +34,14 @@ local function toItemList(inventory)
   local result = {}
   for i = 1, #inventory.slots do
     local slot = inventory.slots[i]
+    local meta = slot.meta or {}
+    local iconData = meta.icon or {}
     result[#result + 1] = {
       icon = slot.id,
-      label = slot.meta and slot.meta.label or formatName(slot.id),
+      label = meta.label or formatName(slot.id),
       count = slot.qty,
-      model = slot.meta and slot.meta.model
+      model = iconData.model or meta.model,
+      iconOptions = iconData
     }
   end
   return result

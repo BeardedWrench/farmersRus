@@ -22,6 +22,12 @@ local function drawIcon(pass, iconRenderer, item, cx, cy, size, padding)
     iconSize = size,
     icon = item.icon
   }
+  local iconOptions = item.iconOptions
+  if iconOptions then
+    for key, value in pairs(iconOptions) do
+      descriptor[key] = value
+    end
+  end
   local icon = iconRenderer:getIcon(item.icon, descriptor)
   if not icon or not icon.material then
     return

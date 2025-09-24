@@ -47,6 +47,37 @@ function IconRenderer:getIcon(key, descriptor)
   return fallback
 end
 
+local function applyRotation(pass, options)
+  if not options then
+    return
+  end
+
+  if options.orientation then
+    local orientation = options.orientation
+    if orientation.pitch then
+      pass:rotate(math.rad(orientation.pitch), 1, 0, 0)
+    end
+    if orientation.yaw then
+      pass:rotate(math.rad(orientation.yaw), 0, 1, 0)
+    end
+    if orientation.roll then
+      pass:rotate(math.rad(orientation.roll), 0, 0, 1)
+    end
+    return
+  end
+
+  if options.rotations then
+    for i = 1, #options.rotations do
+      local rotation = options.rotations[i]
+      pass:rotate(rotation[1], rotation[2], rotation[3], rotation[4] or 0)
+    end
+    return
+  end
+
+  local rotation = options.rotation or { math.rad(35), 0, 1, 0 }
+  pass:rotate(rotation[1], rotation[2], rotation[3], rotation[4] or 0)
+end
+
 function IconRenderer:renderModelIcon(key, modelPath, options)
   if not lovr.graphics.newModel or not lovr.graphics.newPass then
     return nil
@@ -71,9 +102,19 @@ function IconRenderer:renderModelIcon(key, modelPath, options)
   pass:setViewPose(1, view)
   pass:setProjection(1, projection)
 
-  local rotation = options.rotation or { math.rad(35), 0, 1, 0 }
   pass:push('transform')
-  pass:rotate(rotation[1], rotation[2], rotation[3], rotation[4] or 0)
+  if options.offset then
+    pass:translate(options.offset[1] or 0, options.offset[2] or 0, options.offset[3] or 0)
+  end
+  applyRotation(pass, options)
+  if options.scale then
+    local scale = options.scale
+    if type(scale) == 'number' then
+      pass:scale(scale)
+    else
+      pass:scale(scale[1] or 1, scale[2] or scale[1] or 1, scale[3] or scale[1] or 1)
+    end
+  end
   pass:draw(model)
   pass:pop()
 

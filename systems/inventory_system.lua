@@ -1,6 +1,7 @@
 local InventoryComponent = require 'components.inventory'
 local WalletComponent = require 'components.wallet'
 local ToolComponent = require 'components.tool'
+local ItemLibrary = require 'entities.item_library'
 
 return function(app)
   local ecs = app.ecs
@@ -73,9 +74,10 @@ return function(app)
       capacity = starter.inventory.capacity
     })
     for _, item in ipairs(starter.inventory.items) do
+      local meta = item.meta or ItemLibrary.get(item.id)
       InventoryComponent.addItem(inventory, item.id, item.qty, {
         stackable = item.stackable,
-        meta = item.meta
+        meta = meta
       })
     end
 
@@ -98,6 +100,13 @@ return function(app)
     local inventory = self:getInventory()
     if not inventory then
       return false
+    end
+    options = options or {}
+    if not options.meta then
+      options.meta = ItemLibrary.get(itemId)
+    end
+    if options.meta and not options.meta.label then
+      options.meta.label = itemId
     end
     return InventoryComponent.addItem(inventory, itemId, amount, options)
   end
