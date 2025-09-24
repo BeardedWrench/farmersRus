@@ -64,7 +64,6 @@ function InventoryUI:render(ui, icons, width)
     autoHeight = true
   })
 
-  local contentWidth, contentHeight = panel:getContentSize()
   local cursorY = 0
 
   local title = panel:label({
@@ -94,8 +93,6 @@ function InventoryUI:render(ui, icons, width)
   panel:slotGrid({
     x = 0,
     y = cursorY,
-    width = contentWidth,
-    height = math.max(0, contentHeight - cursorY),
     items = items,
     columns = layout.grid.columns,
     slotSize = layout.grid.slotSize,
