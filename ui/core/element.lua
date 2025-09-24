@@ -1,4 +1,5 @@
 local Util = require 'ui.core.util'
+local Anchor = require 'ui.core.anchor'
 
 local Element = {}
 Element.__index = Element
@@ -20,7 +21,8 @@ function Element.new(manager, props)
     visible = props.visible ~= false,
     style = props.style or {},
     children = {},
-    parent = nil
+    parent = nil,
+    anchor = Anchor.resolve(props.anchor or 'top_left')
   }
   return setmetatable(element, Element)
 end
@@ -29,10 +31,6 @@ function Element:add(child)
   child.parent = self
   table.insert(self.children, child)
   return child
-end
-
-function Element:getBounds()
-  return self.size.w, self.size.h
 end
 
 function Element:eachChild(callback)
@@ -56,6 +54,17 @@ function Element:getContentSize()
   local w = self.size.w - (self.padding.left + self.padding.right)
   local h = self.size.h - (self.padding.top + self.padding.bottom)
   return math.max(0, w), math.max(0, h)
+end
+
+function Element:getBounds()
+  return self.size.w, self.size.h
+end
+
+function Element:anchorOffset(areaW, areaH, boundsW, boundsH)
+  local anchor = self.anchor
+  local offsetX = (areaW - boundsW) * (anchor.x or 0)
+  local offsetY = (areaH - boundsH) * (anchor.y or 0)
+  return offsetX, offsetY
 end
 
 function Element:draw(pass, originX, originY)

@@ -61,38 +61,28 @@ function InventoryUI:render(ui, icons, width)
     color = self.theme.palette.inventoryPanel,
     outline = { color = self.theme.palette.outlineStrong, thickness = 1 },
     autoWidth = true,
-    autoHeight = true
+    autoHeight = true,
+    contentSpacing = layout.bodySpacing or 16,
+    title = {
+      text = 'Inventory',
+      scale = layout.titleScale,
+      spacing = layout.headerSpacing or 16
+    }
   })
-
-  local cursorY = 0
-
-  local title = panel:label({
-    text = 'Inventory',
-    x = 0,
-    y = cursorY,
-    scale = layout.titleScale,
-    spacing = 0,
-    color = self.theme.palette.text
-  })
-  cursorY = cursorY + title:getHeight() + layout.headerSpacing
 
   local wallet = self.app.inventory and self.app.inventory:getWallet()
   if wallet then
-    local money = panel:label({
+    panel:label({
       text = ('Wallet: %d'):format(wallet.balance or 0),
-      x = 0,
-      y = cursorY,
       scale = layout.walletScale,
       spacing = 0,
       color = self.theme.palette.text
     })
-    cursorY = cursorY + money:getHeight() + layout.walletSpacing
   end
 
   local items = toItemList(self.app.inventory and self.app.inventory:getInventory())
   panel:slotGrid({
-    x = 0,
-    y = cursorY,
+    y = layout.walletSpacing,
     items = items,
     columns = layout.grid.columns,
     slotSize = layout.grid.slotSize,

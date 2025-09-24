@@ -1,6 +1,8 @@
 local Element = require 'ui.core.element'
 local Theme = require 'ui.theme'
 local Util = require 'ui.core.util'
+local Stack = require 'ui/elements/stack'
+local Anchor = require 'ui.core.anchor'
 
 local Panel = setmetatable({}, { __index = Element })
 Panel.__index = Panel
@@ -12,26 +14,14 @@ local function explicitSize(props)
   return props.width or props.w, props.height or props.h
 end
 
-local function resolveAutoFlag(explicit, override, autoSizeOpt)
-  if autoSizeOpt == false then
-    return false
+local function resolveTitle(title)
+  if not title then
+    return nil
   end
-  if override ~= nil then
-    return override
+  if type(title) == 'string' then
+    return { text = title }
   end
-  return explicit == nil
-end
-
-local function initOutline(style, outline)
-  if outline == false then
-    return
-  end
-  local color = outline and outline.color or DEFAULT_OUTLINE
-  local thickness = outline and outline.thickness or 1
-  style.outline = {
-    color = Util.cloneColor(color),
-    thickness = thickness
-  }
+  return title
 end
 
 function Panel.new(manager, props)
@@ -43,15 +33,37 @@ function Panel.new(manager, props)
 
   self.minWidth = props.minWidth or 0
   self.minHeight = props.minHeight or 0
-  self.autoWidth = resolveAutoFlag(explicitW, props.autoWidth, props.autoSize)
-  self.autoHeight = resolveAutoFlag(explicitH, props.autoHeight, props.autoSize)
+  self.autoWidth = (props.autoWidth ~= false) and (props.autoSize ~= false) and (explicitW == nil)
+  self.autoHeight = (props.autoHeight ~= false) and (props.autoSize ~= false) and (explicitH == nil)
 
   self.size.w = explicitW or math.max(self.size.w or 0, self.minWidth)
   self.size.h = explicitH or math.max(self.size.h or 0, self.minHeight)
 
   self.style.color = Util.cloneColor(props.color or DEFAULT_COLOR)
-  initOutline(self.style, props.outline)
-  self.rounding = props.rounding or 0
+  if props.outline ~= false then
+    self.style.outline = {
+      color = Util.cloneColor((props.outline and props.outline.color) or DEFAULT_OUTLINE),
+      thickness = (props.outline and props.outline.thickness) or 1
+    }
+  end
+
+  self.titleSpacing = props.titleSpacing or 12
+  self.titleOffsetX = 0
+  self.titleOffsetY = 0
+  self.headerAnchor = Anchor.resolve('top_center')
+  self.headerElement = nil
+
+  self.content = Stack.new(manager, {
+    direction = props.direction or 'vertical',
+    spacing = props.contentSpacing or 12,
+    anchor = 'top_left'
+  })
+  Element.add(self, self.content)
+
+  local title = resolveTitle(props.title)
+  if title then
+    self:setTitle(title)
+  end
 
   if self.autoWidth or self.autoHeight then
     self:updateAutoSize()
@@ -60,49 +72,85 @@ function Panel.new(manager, props)
   return self
 end
 
-function Panel:measureChildren()
-  local maxRight, maxBottom = 0, 0
-  for i = 1, #self.children do
-    local child = self.children[i]
-    local childW, childH = child:getBounds()
-    local right = child.position.x + (childW or 0)
-    local bottom = child.position.y + (childH or 0)
-    if right > maxRight then
-      maxRight = right
-    end
-    if bottom > maxBottom then
-      maxBottom = bottom
-    end
+function Panel:setTitle(options)
+  local settings = resolveTitle(options)
+  if not settings then
+    self.headerElement = nil
+    return
   end
-  return maxRight, maxBottom
+
+  local Label = require 'ui/elements/label'
+  local props = {
+    text = settings.text,
+    scale = settings.scale or 0.68,
+    color = settings.color or Theme.palette.text,
+    anchor = settings.anchor or 'top_center',
+    x = settings.x or 0,
+    y = settings.y or 0
+  }
+  self.titleSpacing = settings.spacing or self.titleSpacing
+  self.titleOffsetX = settings.offsetX or 0
+  self.titleOffsetY = settings.offsetY or 0
+  self.headerAnchor = Anchor.resolve(props.anchor)
+
+  self.headerElement = Label.new(self.manager, props)
+  if self.autoWidth or self.autoHeight then
+    self:updateAutoSize()
+  end
+end
+
+local function stackHelpers(stack)
+  local helper = {}
+
+  function helper:label(props)
+    return stack:label(props)
+  end
+
+  function helper:button(props)
+    return stack:button(props)
+  end
+
+  function helper:slotGrid(props)
+    return stack:slotGrid(props)
+  end
+
+  function helper:stack(props)
+    return stack:stack(props)
+  end
+
+  return helper
+end
+
+function Panel:contentArea()
+  local innerW, innerH = self:getContentSize()
+  local headerSpace = 0
+  if self.headerElement then
+    local _, titleHeight = self.headerElement:getBounds()
+    headerSpace = titleHeight + self.titleSpacing
+  end
+  return innerW, math.max(0, innerH - headerSpace), headerSpace
+end
+
+function Panel:measureContent()
+  local bodyW, bodyH = self.content:getBounds()
+  local titleW, titleH = 0, 0
+  if self.headerElement then
+    titleW, titleH = self.headerElement:getBounds()
+    titleH = titleH + self.titleSpacing
+  end
+  local width = math.max(bodyW, titleW)
+  local height = bodyH + titleH
+  return width, height
 end
 
 function Panel:updateAutoSize()
-  if not self.autoWidth and not self.autoHeight then
-    return
-  end
-  local contentW, contentH = self:measureChildren()
+  local contentW, contentH = self:measureContent()
   if self.autoWidth then
     self.size.w = math.max(self.minWidth, contentW + self.padding.left + self.padding.right)
   end
   if self.autoHeight then
     self.size.h = math.max(self.minHeight, contentH + self.padding.top + self.padding.bottom)
   end
-end
-
-function Panel:getBounds()
-  return self.size.w, self.size.h
-end
-
-function Panel:getRenderColor()
-  if self.renderColor then
-    return self.renderColor
-  end
-  return self.style.color or DEFAULT_COLOR
-end
-
-function Panel:setRenderColor(color)
-  self.renderColor = color and Util.cloneColor(color) or nil
 end
 
 local function drawOutline(pass, x, y, w, h, outline)
@@ -125,7 +173,7 @@ function Panel:draw(pass, originX, originY)
   local cx = x + w * 0.5
   local cy = y + h * 0.5
 
-  local color = self:getRenderColor()
+  local color = self.style.color or DEFAULT_COLOR
   pass:setColor(color[1], color[2], color[3], color[4] or 1)
   pass:plane(cx, cy, 0, w, h)
 
@@ -134,49 +182,49 @@ function Panel:draw(pass, originX, originY)
     pass:setColor(1, 1, 1, 1)
   end
 
-  local contentX, contentY = self:getContentOrigin(originX, originY)
-  for i = 1, #self.children do
-    self.children[i]:draw(pass, contentX, contentY)
+  local innerW, innerH = self:contentArea()
+  local contentX = x + self.padding.left
+  local contentY = y + self.padding.top
+
+  if self.headerElement then
+    local headerW, headerH = self.headerElement:getBounds()
+    local offsetX = (innerW - headerW) * (self.headerAnchor.x or 0)
+    local headerX = contentX + offsetX + self.titleOffsetX
+    local headerY = contentY + self.titleOffsetY
+    self.headerElement:draw(pass, headerX, headerY)
+    contentY = contentY + headerH + self.titleSpacing
+    innerH = math.max(0, innerH - (headerH + self.titleSpacing))
   end
 
-  self.renderColor = nil
+  if #self.content.children > 0 then
+    self.content.size.w = innerW
+    self.content.size.h = innerH
+    self.content:draw(pass, contentX, contentY)
+  end
 end
 
 function Panel:add(child)
-  Element.add(self, child)
-  self:updateAutoSize()
-  return child
-end
-
-local function requireLabel()
-  return require 'ui/elements/label'
-end
-
-local function requireButton()
-  return require 'ui/elements/button'
-end
-
-local function requireSlotGrid()
-  return require 'ui/elements/slotgrid'
-end
-
-function Panel:panel(props)
-  return self:add(Panel.new(self.manager, props))
+  return self.content:add(child)
 end
 
 function Panel:label(props)
-  local Label = requireLabel()
-  return self:add(Label.new(self.manager, props))
+  return self.content:label(props)
 end
 
 function Panel:button(props)
-  local Button = requireButton()
-  return self:add(Button.new(self.manager, props))
+  return self.content:button(props)
 end
 
 function Panel:slotGrid(props)
-  local SlotGrid = requireSlotGrid()
-  return self:add(SlotGrid.new(self.manager, props))
+  return self.content:slotGrid(props)
+end
+
+function Panel:stack(props)
+  return self.content:stack(props)
+end
+
+function Panel:content()
+  return stackHelpers(self.content)
 end
 
 return Panel

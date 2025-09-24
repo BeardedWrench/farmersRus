@@ -56,7 +56,8 @@ function Hud:render(ui)
     color = self.theme.palette.hudPanel,
     outline = { color = self.theme.palette.outline, thickness = 1 },
     autoWidth = true,
-    autoHeight = true
+    autoHeight = true,
+    contentSpacing = layout.lineSpacing + 4
   })
 
   panel:label({

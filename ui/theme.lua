@@ -33,8 +33,9 @@ Theme.layout = {
     padding = { top = 26, right = 26, bottom = 26, left = 26 },
     titleScale = 0.72,
     walletScale = 0.54,
+    headerSpacing = 16,
+    bodySpacing = 18,
     walletSpacing = 16,
-    headerSpacing = 12,
     grid = {
       columns = 4,
       slotSize = 72,
