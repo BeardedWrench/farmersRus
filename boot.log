@@ -1,25 +1,25 @@
-[2025-09-24 08:34:27] log start
-[2025-09-24 08:34:27][INFO] Binding subsystems
-[2025-09-24 08:34:27][INFO] Preloading global assets
-[2025-09-24 08:34:27][INFO] Loading gameplay database
-[2025-09-24 08:34:27][INFO] Registering scenes
-[2025-09-24 08:34:27][INFO] Registering systems
-[2025-09-24 08:34:27][INFO] Registering system camera_system
-[2025-09-24 08:34:27][INFO] Registering system grid_system
-[2025-09-24 08:34:27][INFO] Registering system placement_system
-[2025-09-24 08:34:27][INFO] Registering system tool_system
-[2025-09-24 08:34:27][INFO] Registering system crop_growth_system
-[2025-09-24 08:34:27][INFO] Registering system hydration_system
-[2025-09-24 08:34:27][INFO] Registering system fertility_system
-[2025-09-24 08:34:27][INFO] Registering system harvest_system
-[2025-09-24 08:34:27][INFO] Registering system inventory_system
-[2025-09-24 08:34:27][INFO] Registering system economy_system
-[2025-09-24 08:34:27][INFO] Registering system audio_system
-[2025-09-24 08:34:27][INFO] Registering system ui_system
-[2025-09-24 08:34:27][INFO] Registering system scene_system
-[2025-09-24 08:34:27][INFO] Registering system save_system
-[2025-09-24 08:34:27][INFO] Registering system render_system
-[2025-09-24 08:34:27][INFO] Registering system fx_system
-[2025-09-24 08:34:27][INFO] Activating farm scene
-[2025-09-24 08:34:27][INFO] Save file detected, emitting load event
-[2025-09-24 08:34:27][INFO] Startup sequence complete
+[2025-09-24 09:34:06] log start
+[2025-09-24 09:34:06][INFO] Binding subsystems
+[2025-09-24 09:34:06][INFO] Preloading global assets
+[2025-09-24 09:34:06][INFO] Loading gameplay database
+[2025-09-24 09:34:06][INFO] Registering scenes
+[2025-09-24 09:34:06][INFO] Registering systems
+[2025-09-24 09:34:06][INFO] Registering system camera_system
+[2025-09-24 09:34:06][INFO] Registering system grid_system
+[2025-09-24 09:34:06][INFO] Registering system placement_system
+[2025-09-24 09:34:06][INFO] Registering system tool_system
+[2025-09-24 09:34:06][INFO] Registering system crop_growth_system
+[2025-09-24 09:34:06][INFO] Registering system hydration_system
+[2025-09-24 09:34:06][INFO] Registering system fertility_system
+[2025-09-24 09:34:06][INFO] Registering system harvest_system
+[2025-09-24 09:34:06][INFO] Registering system inventory_system
+[2025-09-24 09:34:06][INFO] Registering system economy_system
+[2025-09-24 09:34:06][INFO] Registering system audio_system
+[2025-09-24 09:34:06][INFO] Registering system ui_system
+[2025-09-24 09:34:06][INFO] Registering system scene_system
+[2025-09-24 09:34:06][INFO] Registering system save_system
+[2025-09-24 09:34:06][INFO] Registering system render_system
+[2025-09-24 09:34:06][INFO] Registering system fx_system
+[2025-09-24 09:34:06][INFO] Activating farm scene
+[2025-09-24 09:34:06][INFO] Save file detected, emitting load event
+[2025-09-24 09:34:06][INFO] Startup sequence complete

@@ -1,5 +1,4 @@
 local Element = require 'ui.core.element'
-local Anchor = require 'ui.core.anchor'
 
 local Stack = setmetatable({}, { __index = Element })
 Stack.__index = Stack
@@ -9,8 +8,8 @@ function Stack.new(manager)
   setmetatable(self, Stack)
   self.direction = 'vertical'
   self.spacing = 8
-  self.align = 'start'    -- cross axis ('start','center','end','stretch')
-  self.justify = 'start'  -- main axis ('start','center','end','space_between','space_around','space_evenly')
+  self.align = 'start'    -- cross axis alignment
+  self.justify = 'start'  -- main axis distribution
   return self
 end
 
@@ -81,7 +80,7 @@ local function distributeSpacing(mode, spacing, free, count)
     return spacing, 0
   end
   if mode == 'space_between' then
-    return spacing + free / (count - 1), 0
+    return spacing + (free / (count - 1)), 0
   elseif mode == 'space_around' then
     local extra = free / count
     return spacing + extra, extra * 0.5
@@ -123,10 +122,7 @@ function Stack:draw(pass, originX, originY)
     return
   end
 
-  local width, height = self:getBounds()
-  local anchor = self.anchor or Anchor.resolve('top_left')
-  local x = originX + self.position.x - (anchor.x or 0) * width
-  local y = originY + self.position.y - (anchor.y or 0) * height
+  local availableW, availableH = self:getBounds()
 
   if self.direction == 'vertical' then
     local childHeights, childWidths = {}, {}
@@ -141,29 +137,29 @@ function Stack:draw(pass, originX, originY)
       totalHeight = totalHeight + self.spacing * (#self.children - 1)
     end
     local spacing = self.spacing
-    local startGap = 0
-    local freeSpace = height - totalHeight
+    local freeSpace = availableH - totalHeight
     if freeSpace < 0 then
       freeSpace = 0
     end
+    local startGap = 0
     if freeSpace > 0 then
       spacing, startGap = distributeSpacing(self.justify, spacing, freeSpace, #self.children)
     end
-    local cursorY = y + justifyOffset(self.justify, freeSpace) + startGap
+    local cursorY = originY + justifyOffset(self.justify, freeSpace) + startGap
     for i = 1, #self.children do
       local child = self.children[i]
       local childW = childWidths[i]
       local childH = childHeights[i]
-      local alignShift, stretched = alignOffset(self.align, width, childW)
+      local alignShift, stretched = alignOffset(self.align, availableW, childW)
       local drawWidth = stretched or childW
       if stretched and self.align == 'stretch' and child.setSize then
         child:setSize(drawWidth, childH)
       end
-      local childX = x + alignShift + child.position.x
+      local childX = originX + alignShift + child.position.x
       local childY = cursorY + child.position.y
-      local childAnchor = child.anchor or Anchor.resolve('top_left')
-      local drawX = childX - (childAnchor.x or 0) * childW
-      local drawY = childY - (childAnchor.y or 0) * childH
+      local anchor = child.anchor or { x = 0, y = 0 }
+      local drawX = childX - (anchor.x or 0) * drawWidth
+      local drawY = childY - (anchor.y or 0) * childH
       child:draw(pass, drawX, drawY)
       cursorY = childY + childH + spacing
     end
@@ -180,29 +176,29 @@ function Stack:draw(pass, originX, originY)
       totalWidth = totalWidth + self.spacing * (#self.children - 1)
     end
     local spacing = self.spacing
-    local startGap = 0
-    local freeSpace = width - totalWidth
+    local freeSpace = availableW - totalWidth
     if freeSpace < 0 then
       freeSpace = 0
     end
+    local startGap = 0
     if freeSpace > 0 then
       spacing, startGap = distributeSpacing(self.justify, spacing, freeSpace, #self.children)
     end
-    local cursorX = x + justifyOffset(self.justify, freeSpace) + startGap
+    local cursorX = originX + justifyOffset(self.justify, freeSpace) + startGap
     for i = 1, #self.children do
       local child = self.children[i]
       local childW = childWidths[i]
       local childH = childHeights[i]
-      local alignShift, stretched = alignOffset(self.align, height, childH)
+      local alignShift, stretched = alignOffset(self.align, availableH, childH)
       local drawHeight = stretched or childH
       if stretched and self.align == 'stretch' and child.setSize then
         child:setSize(childW, drawHeight)
       end
       local childX = cursorX + child.position.x
-      local childY = y + alignShift + child.position.y
-      local childAnchor = child.anchor or Anchor.resolve('top_left')
-      local drawX = childX - (childAnchor.x or 0) * childW
-      local drawY = childY - (childAnchor.y or 0) * childH
+      local childY = originY + alignShift + child.position.y
+      local anchor = child.anchor or { x = 0, y = 0 }
+      local drawX = childX - (anchor.x or 0) * childW
+      local drawY = childY - (anchor.y or 0) * drawHeight
       child:draw(pass, drawX, drawY)
       cursorX = childX + childW + spacing
     end

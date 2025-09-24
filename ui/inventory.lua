@@ -62,7 +62,7 @@ function InventoryUI:render(ui, icons, width)
     :setAutoSize(true, true)
     :setTitleSpacing(layout.headerSpacing or 16)
     :setTitleText('Inventory')
-    :setBodySpacing(0)
+    :setBodySpacing(layout.bodySpacing or 18)
 
   local stack = ui:createStack()
     :setDirection('vertical')

@@ -52,7 +52,6 @@ function Hud:render(ui)
     :setBackground(self.theme.palette.hudPanel)
     :setOutline(self.theme.palette.outline, 1)
     :setAutoSize(true, true)
-    :setBodySpacing(0)
 
   local stack = ui:createStack()
     :setDirection('vertical')
