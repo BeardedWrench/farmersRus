@@ -1,114 +1,160 @@
 local Element = require 'ui.core.element'
-local Slot = require 'ui/elements/slot'
 local Theme = require 'ui.theme'
-local Util = require 'ui.core.util'
+local Theme = require 'ui.theme'
 
 local SlotGrid = setmetatable({}, { __index = Element })
 SlotGrid.__index = SlotGrid
 
-function SlotGrid.new(manager, props)
-  props = props or {}
-  local self = Element.new(manager, props)
-  setmetatable(self, SlotGrid)
+local DEFAULT_SLOT_BG = { 0.2, 0.21, 0.27, 0.92 }
+local DEFAULT_SLOT_OUTLINE = { 1, 1, 1, 0.1 }
 
-  self.items = props.items or {}
-  self.columns = props.columns or Theme.layout.inventory.grid.columns
-  self.slotSize = props.slotSize or Theme.layout.inventory.grid.slotSize
-  self.spacing = props.spacing or Theme.layout.inventory.grid.spacing
-  self.iconRenderer = props.iconRenderer
-  self.textScale = props.textScale or Theme.layout.inventory.grid.textScale
-  self.showLabels = props.showLabels ~= false
-  self.showCounts = props.showCounts ~= false
-  self.emptyMessage = props.emptyMessage or '(empty)'
-  self.labelPadding = props.labelPadding or 8
-  self.labelOffset = props.labelOffset or 8
-  self.countPadding = props.countPadding or 6
-  self.iconPadding = props.iconPadding or Theme.layout.inventory.grid.iconPadding
-  self.slotColor = Util.cloneColor(props.slotColor or Theme.palette.slotBackground)
-  self.outlineColor = Util.cloneColor(props.outlineColor or Theme.palette.slotOutline)
-  self.textColor = props.textColor and Util.cloneColor(props.textColor) or Theme.palette.text
-  self.countColor = props.countColor and Util.cloneColor(props.countColor) or Theme.palette.text
-  self.countScale = self.textScale * 0.9
+function SlotGrid.new(manager)
+  local self = Element.new(manager)
+  setmetatable(self, SlotGrid)
+  self.items = {}
+  self.columns = 4
+  self.slotSize = 72
+  self.spacing = 16
+  self.iconPadding = 10
+  self.showLabels = true
+  self.showCounts = true
+  self.textScale = 0.45
+  self.slotColor = {
+    DEFAULT_SLOT_BG[1],
+    DEFAULT_SLOT_BG[2],
+    DEFAULT_SLOT_BG[3],
+    DEFAULT_SLOT_BG[4]
+  }
+  self.outlineColor = {
+    DEFAULT_SLOT_OUTLINE[1],
+    DEFAULT_SLOT_OUTLINE[2],
+    DEFAULT_SLOT_OUTLINE[3],
+    DEFAULT_SLOT_OUTLINE[4]
+  }
+  self.emptyMessage = '(empty)'
   return self
 end
 
 function SlotGrid:setItems(items)
   self.items = items or {}
+  return self
 end
 
-local function computeGridDimensions(self)
-  local columns = math.max(1, self.columns)
-  local count = #self.items
-  local rows = count > 0 and math.ceil(count / columns) or 1
-  return columns, rows
+function SlotGrid:setColumns(columns)
+  if columns and columns > 0 then
+    self.columns = columns
+  end
+  return self
+end
+
+function SlotGrid:setSlotSize(size)
+  if size then
+    self.slotSize = size
+  end
+  return self
+end
+
+function SlotGrid:setSpacing(spacing)
+  if spacing then
+    self.spacing = spacing
+  end
+  return self
+end
+
+function SlotGrid:setTextScale(scale)
+  if scale then
+    self.textScale = scale
+  end
+  return self
+end
+
+function SlotGrid:setIconPadding(padding)
+  if padding then
+    self.iconPadding = padding
+  end
+  return self
+end
+
+function SlotGrid:setIconRenderer(renderer)
+  self.iconRenderer = renderer
+  return self
+end
+
+function SlotGrid:setEmptyMessage(message)
+  if message then
+    self.emptyMessage = message
+  end
+  return self
+end
+
+function SlotGrid:setSlotColors(background, outline)
+  if background then
+    self.slotColor = { background[1], background[2], background[3], background[4] or 1 }
+  end
+  if outline then
+    self.outlineColor = { outline[1], outline[2], outline[3], outline[4] or 1 }
+  end
+  return self
+end
+
+function SlotGrid:setShowLabels(enabled)
+  self.showLabels = enabled ~= false
+  return self
+end
+
+function SlotGrid:setShowCounts(enabled)
+  self.showCounts = enabled ~= false
+  return self
 end
 
 function SlotGrid:getBounds()
-  local width = self.size.w
-  local height = self.size.h
-  if (not width or width == 0) or (not height or height == 0) then
-    local columns, rows = computeGridDimensions(self)
-    local totalWidth = columns * self.slotSize + math.max(0, columns - 1) * self.spacing
-    local totalHeight = rows * self.slotSize + math.max(0, rows - 1) * self.spacing
-    if not width or width == 0 then
-      width = totalWidth
-    end
-    if not height or height == 0 then
-      height = totalHeight
-    end
+  local count = #self.items
+  if count == 0 then
+    return self.slotSize, self.slotSize
   end
+  local columns = math.max(1, self.columns)
+  local rows = math.ceil(count / columns)
+  local width = columns * self.slotSize + (columns - 1) * self.spacing
+  local height = rows * self.slotSize + (rows - 1) * self.spacing
   return width, height
 end
 
-local function drawEmptyState(self, pass, font, x, y)
-  pass:setColor(Theme.palette.mutedText[1], Theme.palette.mutedText[2], Theme.palette.mutedText[3], Theme.palette.mutedText[4])
-  local scale = self.textScale
-  local width = font:getWidth(self.emptyMessage) * scale
-  local height = font:getHeight() * scale
-  local areaWidth = self.size.w > 0 and self.size.w or width
-  local areaHeight = self.size.h > 0 and self.size.h or height
-  local centerX = x + areaWidth * 0.5
-  local centerY = y + areaHeight * 0.5
-  pass:text(self.emptyMessage, centerX, centerY, 0, scale)
+local function drawSlot(pass, x, y, size, bg, outline)
+  local cx = x + size * 0.5
+  local cy = y + size * 0.5
+  pass:setColor(bg[1], bg[2], bg[3], bg[4])
+  pass:plane(cx, cy, 0, size, size)
+  pass:setColor(outline[1], outline[2], outline[3], outline[4])
+  pass:line(x, y, 0, x + size, y, 0)
+  pass:line(x + size, y, 0, x + size, y + size, 0)
+  pass:line(x + size, y + size, 0, x, y + size, 0)
+  pass:line(x, y + size, 0, x, y, 0)
   pass:setColor(1, 1, 1, 1)
 end
 
-local function computeColumns(self)
-  local columns = math.max(1, self.columns)
-  local w = self.size.w
-  if w and w > 0 then
-    local maxCols = math.max(1, math.floor((w + self.spacing) / (self.slotSize + self.spacing)))
-    columns = math.min(columns, maxCols)
+local function drawLabel(pass, font, text, x, y, scale)
+  if not text or text == '' then
+    return
   end
-  return columns
-end
-
-local function computeMaxRows(self)
-  local h = self.size.h
-  if not h or h <= 0 then
-    return math.huge
-  end
-  return math.max(1, math.floor((h + self.spacing) / (self.slotSize + self.spacing)))
+  local width = font:getWidth(text) * scale
+  local height = font:getHeight() * scale
+  pass:text(text, x + width * 0.5, y + height * 0.5, 0, scale)
 end
 
 function SlotGrid:draw(pass, originX, originY)
   if not self.visible then
     return
   end
-  local font = self.manager.font
-  if not font then
-    return
-  end
-
+  local font = self.manager and self.manager.font
+  local columns = math.max(1, self.columns)
   local items = self.items or {}
   local count = #items
-  local columns = computeColumns(self)
-  local maxRows = computeMaxRows(self)
-
-  local startX, startY = self:getAbsolutePosition(originX, originY)
-
   if count == 0 then
-    drawEmptyState(self, pass, font, startX, startY)
+    if font then
+      pass:setColor(Theme.palette.mutedText[1], Theme.palette.mutedText[2], Theme.palette.mutedText[3], Theme.palette.mutedText[4])
+      drawLabel(pass, font, self.emptyMessage, originX, originY, self.textScale)
+      pass:setColor(1, 1, 1, 1)
+    end
     return
   end
 
@@ -116,30 +162,43 @@ function SlotGrid:draw(pass, originX, originY)
     local item = items[index]
     local col = (index - 1) % columns
     local row = math.floor((index - 1) / columns)
-    if row >= maxRows then
-      break
+    local slotX = originX + col * (self.slotSize + self.spacing)
+    local slotY = originY + row * (self.slotSize + self.spacing)
+
+    drawSlot(pass, slotX, slotY, self.slotSize, self.slotColor, self.outlineColor)
+
+    if self.iconRenderer and item and item.icon then
+      local descriptor = {
+        model = item.model,
+        iconSize = self.slotSize,
+        icon = item.icon
+      }
+      local icon = self.iconRenderer:getIcon(item.icon, descriptor)
+      if icon and icon.material then
+        local extent = math.max(0, self.slotSize - self.iconPadding * 2)
+        local cx = slotX + self.slotSize * 0.5
+        local cy = slotY + self.slotSize * 0.5
+        pass:push('state')
+        pass:setMaterial(icon.material)
+        pass:plane(cx, cy, 0.001, extent, extent)
+        pass:pop('state')
+      end
     end
 
-    local x = startX + col * (self.slotSize + self.spacing)
-    local y = startY + row * (self.slotSize + self.spacing)
+    if font and self.showLabels and item and item.label then
+      local labelY = slotY + self.slotSize - font:getHeight() * self.textScale - 6
+      drawLabel(pass, font, item.label, slotX + 6, labelY, self.textScale)
+    end
 
-    Slot.draw(pass, font, self.iconRenderer, item, {
-      x = x,
-      y = y,
-      size = self.slotSize,
-      bgColor = self.slotColor,
-      outlineColor = self.outlineColor,
-      iconPadding = self.iconPadding,
-      showLabels = self.showLabels,
-      showCounts = self.showCounts,
-      textScale = self.textScale,
-      textColor = self.textColor,
-      labelPadding = self.labelPadding,
-      labelOffset = self.labelOffset,
-      countPadding = self.countPadding,
-      countColor = self.countColor,
-      countScale = self.countScale
-    })
+    if font and self.showCounts and item and item.count then
+      local qtyText = ('x%d'):format(item.count)
+      local qtyScale = self.textScale * 0.9
+      local width = font:getWidth(qtyText) * qtyScale
+      local height = font:getHeight() * qtyScale
+      local qtyX = slotX + self.slotSize - width - 6
+      local qtyY = slotY + self.slotSize - height - 6
+      drawLabel(pass, font, qtyText, qtyX, qtyY, qtyScale)
+    end
   end
 end
 

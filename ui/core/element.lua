@@ -1,70 +1,83 @@
-local Util = require 'ui.core.util'
 local Anchor = require 'ui.core.anchor'
 
 local Element = {}
 Element.__index = Element
 
-function Element.new(manager, props)
-  props = props or {}
-  local element = {
-    manager = manager,
-    id = props.id,
-    position = {
-      x = props.x or 0,
-      y = props.y or 0
-    },
-    size = {
-      w = props.w or props.width or 0,
-      h = props.h or props.height or 0
-    },
-    padding = Util.normalizePadding(props.padding),
-    visible = props.visible ~= false,
-    style = props.style or {},
-    children = {},
-    parent = nil,
-    anchor = Anchor.resolve(props.anchor or 'top_left')
+local function normalizePadding(value)
+  if not value then
+    return { top = 0, right = 0, bottom = 0, left = 0 }
+  end
+  if type(value) == 'number' then
+    return { top = value, right = value, bottom = value, left = value }
+  end
+  return {
+    top = value.top or value[1] or 0,
+    right = value.right or value[2] or value.x or 0,
+    bottom = value.bottom or value[3] or value.y or value[2] or 0,
+    left = value.left or value[4] or value.x or value[1] or 0
   }
-  return setmetatable(element, Element)
 end
 
-function Element:add(child)
+function Element.new(manager)
+  local self = setmetatable({}, Element)
+  self.manager = manager
+  self.parent = nil
+  self.children = {}
+  self.visible = true
+  self.position = { x = 0, y = 0 }
+  self.size = { w = 0, h = 0 }
+  self.minSize = { w = 0, h = 0 }
+  self.anchor = Anchor.resolve('top_left')
+  self.padding = normalizePadding(0)
+  return self
+end
+
+function Element:setPosition(x, y)
+  if x then self.position.x = x end
+  if y then self.position.y = y end
+  return self
+end
+
+function Element:setSize(w, h)
+  if w then self.size.w = w end
+  if h then self.size.h = h end
+  return self
+end
+
+function Element:setMinSize(w, h)
+  if w then self.minSize.w = w end
+  if h then self.minSize.h = h end
+  return self
+end
+
+function Element:setPadding(padding)
+  self.padding = normalizePadding(padding)
+  return self
+end
+
+function Element:setAnchor(anchor)
+  self.anchor = Anchor.resolve(anchor)
+  return self
+end
+
+function Element:setVisible(visible)
+  self.visible = visible ~= false
+  return self
+end
+
+function Element:addChild(child)
+  if not child then
+    return nil
+  end
   child.parent = self
   table.insert(self.children, child)
   return child
 end
 
-function Element:eachChild(callback)
-  for i = 1, #self.children do
-    callback(self.children[i])
-  end
-end
-
-function Element:getAbsolutePosition(originX, originY)
-  local x = (originX or 0) + self.position.x
-  local y = (originY or 0) + self.position.y
-  return x, y
-end
-
-function Element:getContentOrigin(originX, originY)
-  local x, y = self:getAbsolutePosition(originX, originY)
-  return x + self.padding.left, y + self.padding.top
-end
-
-function Element:getContentSize()
-  local w = self.size.w - (self.padding.left + self.padding.right)
-  local h = self.size.h - (self.padding.top + self.padding.bottom)
-  return math.max(0, w), math.max(0, h)
-end
-
 function Element:getBounds()
-  return self.size.w, self.size.h
-end
-
-function Element:anchorOffset(areaW, areaH, boundsW, boundsH)
-  local anchor = self.anchor
-  local offsetX = (areaW - boundsW) * (anchor.x or 0)
-  local offsetY = (areaH - boundsH) * (anchor.y or 0)
-  return offsetX, offsetY
+  local width = math.max(self.size.w, self.minSize.w)
+  local height = math.max(self.size.h, self.minSize.h)
+  return width, height
 end
 
 function Element:draw(pass, originX, originY)
@@ -72,7 +85,14 @@ function Element:draw(pass, originX, originY)
     return
   end
   for i = 1, #self.children do
-    self.children[i]:draw(pass, originX, originY)
+    local child = self.children[i]
+    if child.visible then
+      local childW, childH = child:getBounds()
+      local anchor = child.anchor or Anchor.resolve('top_left')
+      local drawX = originX + child.position.x - (anchor.x or 0) * childW
+      local drawY = originY + child.position.y - (anchor.y or 0) * childH
+      child:draw(pass, drawX, drawY)
+    end
   end
 end
 

@@ -1,5 +1,4 @@
 local Theme = require 'ui.theme'
-
 local Hud = {}
 Hud.__index = Hud
 
@@ -45,31 +44,26 @@ function Hud:render(ui)
   local layout = self.theme.layout.hud
   local padding = layout.padding
 
+  local panel = ui:createPanel()
+    :setPosition(margin, margin)
+    :setPadding(padding)
+    :setMinSize(layout.minWidth, layout.minHeight)
+    :setAnchor('top_left')
+    :setBackground(self.theme.palette.hudPanel)
+    :setOutline(self.theme.palette.outline, 1)
+    :setAutoSize(true, true)
+    :setBodySpacing(layout.lineSpacing + 4)
+
   local lines = hudLines(self.app, self.app.inventory and self.app.inventory:getPlayer())
+  for i = 1, #lines do
+    local lineLabel = ui:createLabel()
+      :setText(lines[i])
+      :setScale(layout.textScale)
+      :setAnchor('top_left')
+    panel:addChild(lineLabel)
+  end
 
-  local panel = ui:panel({
-    x = margin,
-    y = margin,
-    minWidth = layout.minWidth,
-    minHeight = layout.minHeight,
-    padding = padding,
-    color = self.theme.palette.hudPanel,
-    outline = { color = self.theme.palette.outline, thickness = 1 },
-    autoWidth = true,
-    autoHeight = true,
-    contentSpacing = layout.lineSpacing + 4
-  })
-
-  panel:label({
-    text = lines,
-    x = 0,
-    y = 0,
-    scale = layout.textScale,
-    spacing = layout.lineSpacing,
-    color = self.theme.palette.text
-  })
-
-  panel:updateAutoSize()
+  ui:add(panel)
 end
 
 return Hud

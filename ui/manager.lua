@@ -1,7 +1,7 @@
 local Theme = require 'ui.theme'
 local Panel = require 'ui/elements/panel'
 local Label = require 'ui/elements/label'
-local Button = require 'ui/elements/button'
+local Stack = require 'ui/elements/stack'
 local SlotGrid = require 'ui/elements/slotgrid'
 
 local UIManager = {}
@@ -21,10 +21,31 @@ end
 
 function UIManager:setFont(font)
   self.font = font
+  return self
 end
 
-function UIManager:getFont()
-  return self.font
+function UIManager:createPanel()
+  return Panel.new(self)
+end
+
+function UIManager:createLabel()
+  return Label.new(self)
+end
+
+function UIManager:createStack()
+  return Stack.new(self)
+end
+
+function UIManager:createSlotGrid()
+  return SlotGrid.new(self)
+end
+
+function UIManager:add(element)
+  if not element then
+    return nil
+  end
+  table.insert(self.elements, element)
+  return element
 end
 
 function UIManager:begin(width, height)
@@ -33,39 +54,10 @@ function UIManager:begin(width, height)
   self.height = height or self.height
 end
 
-function UIManager:add(element)
-  table.insert(self.elements, element)
-  return element
-end
-
-function UIManager:panel(props)
-  props = props or {}
-  props.manager = self
-  local panel = Panel.new(self, props)
-  return self:add(panel)
-end
-
-function UIManager:label(props)
-  props = props or {}
-  local label = Label.new(self, props)
-  return self:add(label)
-end
-
-function UIManager:button(props)
-  props = props or {}
-  local button = Button.new(self, props)
-  return self:add(button)
-end
-
-function UIManager:slotGrid(props)
-  props = props or {}
-  local grid = SlotGrid.new(self, props)
-  return self:add(grid)
-end
-
 function UIManager:draw(pass)
   for i = 1, #self.elements do
-    self.elements[i]:draw(pass, 0, 0)
+    local element = self.elements[i]
+    element:draw(pass, 0, 0)
   end
 end
 

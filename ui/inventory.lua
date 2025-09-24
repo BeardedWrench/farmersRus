@@ -1,7 +1,6 @@
-local InventoryUI = {}
-
 local Theme = require 'ui.theme'
 
+local InventoryUI = {}
 InventoryUI.__index = InventoryUI
 
 function InventoryUI.create(app)
@@ -52,51 +51,41 @@ function InventoryUI:render(ui, icons, width)
 
   local layout = self.theme.layout.inventory
   local margin = self.theme.layout.margin
-  local panel = ui:panel({
-    x = width - margin - layout.minWidth,
-    y = margin,
-    minWidth = layout.minWidth,
-    minHeight = layout.minHeight,
-    padding = layout.padding,
-    color = self.theme.palette.inventoryPanel,
-    outline = { color = self.theme.palette.outlineStrong, thickness = 1 },
-    autoWidth = true,
-    autoHeight = true,
-    contentSpacing = layout.bodySpacing or 16,
-    title = {
-      text = 'Inventory',
-      scale = layout.titleScale,
-      spacing = layout.headerSpacing or 16
-    }
-  })
+
+  local panel = ui:createPanel()
+    :setPosition(width - margin, margin)
+    :setAnchor('top_right')
+    :setPadding(layout.padding)
+    :setMinSize(layout.minWidth, layout.minHeight)
+    :setBackground(self.theme.palette.inventoryPanel)
+    :setOutline(self.theme.palette.outlineStrong, 1)
+    :setAutoSize(true, true)
+    :setTitleSpacing(layout.headerSpacing or 16)
+    :setTitleText('Inventory')
+    :setBodySpacing(layout.bodySpacing or 18)
 
   local wallet = self.app.inventory and self.app.inventory:getWallet()
   if wallet then
-    panel:label({
-      text = ('Wallet: %d'):format(wallet.balance or 0),
-      scale = layout.walletScale,
-      spacing = 0,
-      color = self.theme.palette.text
-    })
+    local walletLabel = ui:createLabel()
+      :setText(('Wallet: %d'):format(wallet.balance or 0))
+      :setScale(layout.walletScale)
+      :setAnchor('top_left')
+    panel:addChild(walletLabel)
   end
 
-  local items = toItemList(self.app.inventory and self.app.inventory:getInventory())
-  panel:slotGrid({
-    y = layout.walletSpacing,
-    items = items,
-    columns = layout.grid.columns,
-    slotSize = layout.grid.slotSize,
-    spacing = layout.grid.spacing,
-    iconRenderer = icons,
-    textScale = layout.grid.textScale,
-    iconPadding = layout.grid.iconPadding,
-    labelPadding = 8,
-    labelOffset = 8,
-    countPadding = 6
-  })
+  local grid = ui:createSlotGrid()
+    :setColumns(layout.grid.columns)
+    :setSlotSize(layout.grid.slotSize)
+    :setSpacing(layout.grid.spacing)
+    :setTextScale(layout.grid.textScale)
+    :setIconPadding(layout.grid.iconPadding)
+    :setIconRenderer(icons)
+    :setShowLabels(false)
+    :setItems(toItemList(self.app.inventory and self.app.inventory:getInventory()))
+    :setAnchor('top_left')
 
-  panel:updateAutoSize()
-  panel.position.x = width - margin - panel.size.w
+  panel:addChild(grid)
+  ui:add(panel)
 end
 
 return InventoryUI
