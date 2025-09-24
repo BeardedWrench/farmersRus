@@ -127,6 +127,9 @@ return function(app)
     local fy = camera.target[2] - camera.position[2]
     local fz = camera.target[3] - camera.position[3]
     local fLength = math.sqrt(fx * fx + fy * fy + fz * fz)
+    if fLength < 1e-6 then
+      return nil
+    end
     fx, fy, fz = fx / fLength, fy / fLength, fz / fLength
 
     local upx, upy, upz = 0, 1, 0
@@ -144,9 +147,9 @@ return function(app)
     local uy = rz * fx - rx * fz
     local uz = rx * fy - ry * fx
 
-    local dirX = rx * viewX + ux * viewY - fx
-    local dirY = ry * viewX + uy * viewY - fy
-    local dirZ = rz * viewX + uz * viewY - fz
+    local dirX = rx * viewX + ux * viewY + fx
+    local dirY = ry * viewX + uy * viewY + fy
+    local dirZ = rz * viewX + uz * viewY + fz
     local length = math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ)
     dirX, dirY, dirZ = dirX / length, dirY / length, dirZ / length
 
@@ -172,29 +175,6 @@ return function(app)
     grid.hover.y = cy
     local within = grid:isWithin(cx, cy)
     grid.hover.state = within and 'within' or 'out'
-
-    if within then
-      if grid.currentHover and (grid.currentHover.x ~= cx or grid.currentHover.y ~= cy) then
-        local previous = getCell(grid.currentHover.x, grid.currentHover.y)
-        if previous.highlight == 'hover' then
-          previous.highlight = 'none'
-        end
-        grid.currentHover = nil
-      end
-      if not grid.currentHover then
-        local cell = getCell(cx, cy)
-        cell.highlight = 'hover'
-        grid.currentHover = { x = cx, y = cy }
-      end
-    else
-      if grid.currentHover then
-        local previous = getCell(grid.currentHover.x, grid.currentHover.y)
-        if previous.highlight == 'hover' then
-          previous.highlight = 'none'
-        end
-        grid.currentHover = nil
-      end
-    end
 
     app.events:emit('grid:hover', grid.hover)
   end
@@ -222,6 +202,22 @@ return function(app)
         pass:pop('state')
       end
     end)
+
+    if grid.hover.state == 'within' then
+      local wx, _, wz = grid:cellToWorld(grid.hover.x, grid.hover.y)
+      pass:push('state')
+      pass:setCullMode('none')
+      pass:setDepthTest('lequal', true)
+      pass:setColor(0.96, 0.82, 0.38, 0.45)
+      pass:plane(wx, 0.04, wz, grid.cellSize, grid.cellSize, -math.pi / 2, 1, 0, 0)
+      pass:setColor(0.96, 0.82, 0.38, 1.0)
+      local half = grid.cellSize * 0.5
+      pass:line(wx - half, 0.045, wz - half, wx + half, 0.045, wz - half)
+      pass:line(wx + half, 0.045, wz - half, wx + half, 0.045, wz + half)
+      pass:line(wx + half, 0.045, wz + half, wx - half, 0.045, wz + half)
+      pass:line(wx - half, 0.045, wz + half, wx - half, 0.045, wz - half)
+      pass:pop('state')
+    end
 
     local minX, maxX = grid.bounds.minX - 0.5, grid.bounds.maxX + 0.5
     local minZ, maxZ = grid.bounds.minY - 0.5, grid.bounds.maxY + 0.5
