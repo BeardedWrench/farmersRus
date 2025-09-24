@@ -52,11 +52,7 @@ function Hud:render(ui)
     :setBackground(self.theme.palette.hudPanel)
     :setOutline(self.theme.palette.outline, 1)
     :setAutoSize(true, true)
-
-  local stack = ui:createStack()
-    :setDirection('vertical')
-    :setSpacing(layout.lineSpacing + 4)
-    :setAnchor('top_left')
+    :setBodySpacing(layout.lineSpacing + 4)
 
   local lines = hudLines(self.app, self.app.inventory and self.app.inventory:getPlayer())
   for i = 1, #lines do
@@ -64,10 +60,8 @@ function Hud:render(ui)
       :setText(lines[i])
       :setScale(layout.textScale)
       :setAnchor('top_left')
-    stack:addChild(lineLabel)
+    panel:addChild(lineLabel)
   end
-
-  panel:addChild(stack)
 
   ui:add(panel)
 end

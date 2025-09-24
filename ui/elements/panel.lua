@@ -26,6 +26,7 @@ function Panel.new(manager)
   self.titleLabel = nil
   self.titleSpacing = 12
   self.bodySpacing = 12
+  self.bodySpacing = 12
   return self
 end
 
@@ -78,6 +79,13 @@ end
 function Panel:setTitleSpacing(spacing)
   if spacing then
     self.titleSpacing = spacing
+  end
+  return self
+end
+
+function Panel:setBodySpacing(spacing)
+  if spacing then
+    self.bodySpacing = spacing
   end
   return self
 end

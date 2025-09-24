@@ -46,11 +46,11 @@ function Stack:getBounds()
   if #self.children == 0 then
     return Element.getBounds(self)
   end
-  local width, height = 0, 0
+  local width, height
   if self.direction == 'vertical' then
+    width, height = 0, 0
     for i = 1, #self.children do
-      local child = self.children[i]
-      local w, h = childSize(child)
+      local w, h = childSize(self.children[i])
       if w > width then
         width = w
       end
@@ -60,9 +60,9 @@ function Stack:getBounds()
       height = height + self.spacing * (#self.children - 1)
     end
   else
+    width, height = 0, 0
     for i = 1, #self.children do
-      local child = self.children[i]
-      local w, h = childSize(child)
+      local w, h = childSize(self.children[i])
       width = width + w
       if h > height then
         height = h
@@ -137,15 +137,12 @@ function Stack:draw(pass, originX, originY)
       totalHeight = totalHeight + self.spacing * (#self.children - 1)
     end
     local spacing = self.spacing
-    local freeSpace = availableH - totalHeight
-    if freeSpace < 0 then
-      freeSpace = 0
-    end
     local startGap = 0
+    local freeSpace = availableH - totalHeight
     if freeSpace > 0 then
       spacing, startGap = distributeSpacing(self.justify, spacing, freeSpace, #self.children)
     end
-    local cursorY = originY + justifyOffset(self.justify, freeSpace) + startGap
+    local cursorY = originY + startGap
     for i = 1, #self.children do
       local child = self.children[i]
       local childW = childWidths[i]
@@ -176,15 +173,12 @@ function Stack:draw(pass, originX, originY)
       totalWidth = totalWidth + self.spacing * (#self.children - 1)
     end
     local spacing = self.spacing
-    local freeSpace = availableW - totalWidth
-    if freeSpace < 0 then
-      freeSpace = 0
-    end
     local startGap = 0
+    local freeSpace = availableW - totalWidth
     if freeSpace > 0 then
       spacing, startGap = distributeSpacing(self.justify, spacing, freeSpace, #self.children)
     end
-    local cursorX = originX + justifyOffset(self.justify, freeSpace) + startGap
+    local cursorX = originX + startGap
     for i = 1, #self.children do
       local child = self.children[i]
       local childW = childWidths[i]
