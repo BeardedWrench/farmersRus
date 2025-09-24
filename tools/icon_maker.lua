@@ -2,7 +2,7 @@
 -- A standalone tool for posing item models and generating icon metadata.
 --
 -- Usage:
---  lovr icon_maker.lua --model path/to/model.gltf
+--  lovr icon_maker.lua --model path/to/model.glb
 --
 -- Controls:
 --  Left/Right: rotate model around Y axis (yaw)
@@ -29,12 +29,15 @@ for i = 1, #args do
   end
 end
 
+-- Accept any file extension for the model.  If the --model flag is missing,
+-- print usage and exit gracefully.  Note that LÖVR accepts both .glb and .gltf.
 if not modelPath then
-  print("Usage: lovr icon_maker.lua --model path/to/model.gltf")
+  print("Usage: lovr icon_maker.lua --model <path/to/model.glb or .gltf>")
   return function() end
 end
 
 local model
+local iconRenderer
 
 -- Pose parameters
 local yaw = 0.0
@@ -57,12 +60,33 @@ local defaults = {
 }
 
 function lovr.load()
-  model = lovr.graphics.newModel(modelPath)
-  -- Center the model on the origin for better framing; assumes unit scaling
-  if model.getBoundingBox then
-    local min, max = model:getBoundingBox()
-    local center = (min + max) / 2
-    model:translate(-center.x, -center.y, -center.z)
+  -- Load the model.  If loading fails, the tool will fallback to showing nothing.
+  local ok
+  ok, model = pcall(lovr.graphics.newModel, modelPath)
+  if not ok then
+    print("Failed to load model at path: " .. tostring(modelPath))
+    model = nil
+  else
+    -- Center the model on the origin for better framing; assumes unit scaling
+    if model.getBoundingBox then
+      local min, max = model:getBoundingBox()
+      local center = (min + max) / 2
+      model:translate(-center.x, -center.y, -center.z)
+    end
+  end
+
+  -- Create an icon renderer for generating 2D icon previews.  The renderer
+  -- comes from the game's UI module and expects an app table, which we omit.
+  local okRenderer
+  okRenderer, iconRenderer = pcall(require, 'farmersRus-main/ui/icon_renderer')
+  if not okRenderer then
+    -- Fallback: try requiring via relative path without the farmersRus-main prefix
+    okRenderer, iconRenderer = pcall(require, 'ui/icon_renderer')
+  end
+  if not okRenderer then
+    iconRenderer = nil
+  else
+    iconRenderer = iconRenderer.new(nil)
   end
 end
 
@@ -114,40 +138,75 @@ end
 
 -- Render the model from the current pose
 function lovr.draw(pass)
-  if not model then return end
+  -- Clear the background to the default UI color so the preview stands out.
+  pass:setColor(0.12, 0.14, 0.18, 1)
+  pass:clear()
 
-  -- Setup perspective; using 70° FOV and 1:1 aspect ratio
-  pass:setProjection(1, lovr.math.newMat4():perspective(math.rad(70), 1.0, 0.01, 100.0))
-
-  -- Compute camera position
-  local cx = offsetX + distance * math.sin(yaw) * math.cos(pitch)
-  local cy = cameraY
-  local cz = offsetY + distance * math.cos(yaw) * math.cos(pitch)
-
-  local tx = offsetX
-  local ty = targetY
-  local tz = offsetY
-
-  local up = lovr.math.newVec3(0, 1, 0)
-  local eye = lovr.math.newVec3(cx, cy, cz)
-  local target = lovr.math.newVec3(tx, ty, tz)
-  pass:setViewMatrix(1, lovr.math.newMat4():lookAt(eye, target, up))
-
-  -- Draw coordinate axes for reference
-  pass:line(0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0) -- X axis red
-  pass:line(0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1) -- Y axis green
-  pass:line(0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0) -- Z axis blue
-
-  pass:draw(model)
-
-  -- Display instructions and current values on screen
-  local yPosition = 0.8
-  local function drawText(label, value)
-    pass:text(label .. tostring(value), -0.95, yPosition, -1.0, .03)
-    yPosition = yPosition - .05
+  -- Compute an icon preview if the renderer and model are available.  We call
+  -- IconRenderer:renderModelIcon each frame with the current pose to get a
+  -- material containing a texture of the model rendered at the given
+  -- orientation and camera settings.  We then draw that texture inside a
+  -- slot-sized panel so you can see exactly how the icon will appear in the
+  -- game inventory UI.
+  local iconSize = 128
+  local iconMaterial = nil
+  if iconRenderer and model then
+    local descriptor = {
+      model = modelPath,
+      iconSize = iconSize,
+      distance = distance,
+      cameraY = cameraY,
+      targetY = targetY,
+      orientation = { pitch = math.deg(pitch), yaw = math.deg(yaw), roll = 0 },
+      offset = { offsetX or 0, offsetY or 0, 0 }
+    }
+    local icon = iconRenderer:getIcon('__preview__', descriptor)
+    if icon and icon.material then
+      iconMaterial = icon.material
+    end
   end
-  drawText("Yaw: ", yaw)
-  drawText("Pitch: ", pitch)
+
+  -- Determine window dimensions; fallback to 800x600 if unavailable.
+  local width, height = lovr.graphics.getDimensions()
+  width = width or 800
+  height = height or 600
+
+  -- Draw a panel for the preview.  We mimic the slot background and border
+  -- colors from the theme to provide an accurate preview.  The slot will be
+  -- centered in the window.
+  local slotSize = 128
+  local slotX = (width - slotSize) * 0.5
+  local slotY = (height - slotSize) * 0.5
+  -- Background
+  pass:setColor(0.2, 0.21, 0.27, 0.92) -- Theme.palette.slotBackground
+  pass:plane(slotX + slotSize * 0.5, slotY + slotSize * 0.5, 0, slotSize, slotSize)
+  -- Border
+  pass:setColor(1, 1, 1, 0.1) -- Theme.palette.slotOutline
+  pass:line(slotX, slotY, 0, slotX + slotSize, slotY, 0)
+  pass:line(slotX + slotSize, slotY, 0, slotX + slotSize, slotY + slotSize, 0)
+  pass:line(slotX + slotSize, slotY + slotSize, 0, slotX, slotY + slotSize, 0)
+  pass:line(slotX, slotY + slotSize, 0, slotX, slotY, 0)
+  pass:setColor(1, 1, 1, 1)
+
+  -- Draw the icon texture into the slot if available.
+  if iconMaterial then
+    pass:setMaterial(iconMaterial)
+    pass:plane(slotX + slotSize * 0.5, slotY + slotSize * 0.5, 0.001, slotSize - 20, slotSize - 20)
+    pass:setMaterial()
+  end
+
+  -- Draw parameter labels and values below the preview for reference.  These
+  -- update live as you adjust the pose.  We use an orthographic projection
+  -- here since we're drawing flat UI elements.
+  local textScale = 24 / height
+  local baseY = slotY - 50
+  local function drawText(label, value)
+    pass:text(label .. string.format("%.2f", value), 10, baseY, 0, textScale)
+    baseY = baseY - 24
+  end
+  pass:text("Controls: ←/→ yaw, ↑/↓ pitch, W/S zoom, Q/E cameraY, A/D targetY, Space reset, Enter copy", 10, height - 30, 0, textScale)
+  drawText("Yaw: ", math.deg(yaw))
+  drawText("Pitch: ", math.deg(pitch))
   drawText("Distance: ", distance)
   drawText("CameraY: ", cameraY)
   drawText("TargetY: ", targetY)
