@@ -6,9 +6,6 @@ local Anchor = require 'ui.core.anchor'
 local Panel = setmetatable({}, { __index = Element })
 Panel.__index = Panel
 
-local DEFAULT_COLOR = Theme.palette.panel
-local DEFAULT_OUTLINE = Theme.palette.outline
-
 local function cloneColor(color)
   if not color then
     return nil
@@ -19,19 +16,18 @@ end
 function Panel.new(manager)
   local self = Element.new(manager)
   setmetatable(self, Panel)
-  self.background = cloneColor(DEFAULT_COLOR)
-  self.outline = cloneColor(DEFAULT_OUTLINE)
+  self.background = cloneColor(Theme.palette.panel)
+  self.outline = cloneColor(Theme.palette.outline)
   self.autoWidth = true
   self.autoHeight = true
   self.titleLabel = nil
   self.titleSpacing = 12
   self.bodySpacing = 12
-  self.bodySpacing = 12
   return self
 end
 
 function Panel:setBackground(color)
-  self.background = cloneColor(color or DEFAULT_COLOR)
+  self.background = cloneColor(color or Theme.palette.panel)
   return self
 end
 
@@ -39,11 +35,11 @@ function Panel:setOutline(color, alpha)
   if color == false then
     self.outline = nil
   else
-    local outlineColor = color or DEFAULT_OUTLINE
-    self.outline = cloneColor(outlineColor)
+    local outline = cloneColor(color or Theme.palette.outline)
     if alpha then
-      self.outline[4] = alpha
+      outline[4] = alpha
     end
+    self.outline = outline
   end
   return self
 end
@@ -60,9 +56,9 @@ function Panel:setTitleText(text)
     return self
   end
   local label = Label.new(self.manager)
-  label:setText(text)
-  label:setScale(0.7)
-  label:setAnchor('top_center')
+    :setText(text)
+    :setScale(0.7)
+    :setAnchor('top_center')
   self.titleLabel = label
   return self
 end
@@ -70,7 +66,6 @@ end
 function Panel:setTitle(label)
   self.titleLabel = label
   if self.titleLabel then
-    self.titleLabel.parent = self
     self.titleLabel:setAnchor('top_center')
   end
   return self
@@ -90,48 +85,26 @@ function Panel:setBodySpacing(spacing)
   return self
 end
 
-function Panel:setBodySpacing(spacing)
-  if spacing then
-    self.bodySpacing = spacing
-  end
-  return self
-end
-
 local function measureChildren(children)
-  local maxRight, maxBottom = 0, 0
+  local width, height = 0, 0
   for i = 1, #children do
     local child = children[i]
     local w, h = child:getBounds()
-    local right = child.position.x + w
-    local bottom = child.position.y + h
-    if right > maxRight then
-      maxRight = right
+    if w > width then
+      width = w
     end
-    if bottom > maxBottom then
-      maxBottom = bottom
-    end
+    height = height + h
   end
-  return maxRight, maxBottom
+  return width, height
 end
 
 function Panel:getContentBounds()
-  local measuredW, measuredH = measureChildren(self.children)
-  local sumHeight = 0
-  local maxWidth = 0
-  local count = #self.children
-  for i = 1, count do
-    local child = self.children[i]
-    local w, h = child:getBounds()
-    if w > maxWidth then
-      maxWidth = w
-    end
-    sumHeight = sumHeight + h
+  local bodyW, bodyH = measureChildren(self.children)
+  if #self.children > 1 then
+    bodyH = bodyH + self.bodySpacing * (#self.children - 1)
   end
-  if count > 1 then
-    sumHeight = sumHeight + self.bodySpacing * (count - 1)
-  end
-  local width = math.max(measuredW, maxWidth)
-  local height = math.max(measuredH, sumHeight)
+  local width = bodyW
+  local height = bodyH
   if self.titleLabel then
     local titleW, titleH = self.titleLabel:getBounds()
     height = height + titleH + self.titleSpacing
@@ -154,6 +127,18 @@ function Panel:getBounds()
   return width, height
 end
 
+local function drawOutline(pass, x, y, w, h, color)
+  if not color then
+    return
+  end
+  pass:setColor(color[1], color[2], color[3], color[4] or 1)
+  pass:line(x, y, 0, x + w, y, 0)
+  pass:line(x + w, y, 0, x + w, y + h, 0)
+  pass:line(x + w, y + h, 0, x, y + h, 0)
+  pass:line(x, y + h, 0, x, y, 0)
+  pass:setColor(1, 1, 1, 1)
+end
+
 function Panel:draw(pass, originX, originY)
   if not self.visible then
     return
@@ -166,31 +151,24 @@ function Panel:draw(pass, originX, originY)
   local cx = x + width * 0.5
   local cy = y + height * 0.5
 
-  local bg = self.background or cloneColor(DEFAULT_COLOR)
+  local bg = self.background or cloneColor(Theme.palette.panel)
   pass:setColor(bg[1], bg[2], bg[3], bg[4] or 1)
   pass:plane(cx, cy, 0, width, height)
 
-  if self.outline then
-    pass:setColor(self.outline[1], self.outline[2], self.outline[3], self.outline[4] or 1)
-    pass:line(x, y, 0, x + width, y, 0)
-    pass:line(x + width, y, 0, x + width, y + height, 0)
-    pass:line(x + width, y + height, 0, x, y + height, 0)
-    pass:line(x, y + height, 0, x, y, 0)
-    pass:setColor(1, 1, 1, 1)
-  end
+  drawOutline(pass, x, y, width, height, self.outline)
 
   local padding = self.padding
   local contentLeft = x + padding.left
-  local contentTop = y + height - padding.top
+  local contentTop = y + padding.top
   local innerWidth = width - padding.left - padding.right
 
-  local cursorTop = contentTop
+  local cursorY = contentTop
   if self.titleLabel then
     local titleW, titleH = self.titleLabel:getBounds()
-    local titleX = contentLeft + (innerWidth - titleW) * 0.5 + self.titleLabel.position.x
-    local titleY = cursorTop - titleH + self.titleLabel.position.y
-    self.titleLabel:draw(pass, titleX, titleY)
-    cursorTop = titleY - self.titleSpacing
+    local drawX = contentLeft + (innerWidth - titleW) * 0.5 + self.titleLabel.position.x
+    local drawY = cursorY + self.titleLabel.position.y
+    self.titleLabel:draw(pass, drawX, drawY)
+    cursorY = cursorY + titleH + self.titleSpacing
   end
 
   for index = 1, #self.children do
@@ -198,11 +176,14 @@ function Panel:draw(pass, originX, originY)
     if child.visible then
       local childW, childH = child:getBounds()
       local anchorChild = child.anchor or Anchor.resolve('top_left')
-      local baseTop = cursorTop - child.position.y
       local drawX = contentLeft + child.position.x - (anchorChild.x or 0) * childW
-      local drawY = baseTop - childH + (anchorChild.y or 0) * childH
+      local drawY = cursorY + child.position.y - (anchorChild.y or 0) * childH
       child:draw(pass, drawX, drawY)
-      cursorTop = baseTop - childH - (index < #self.children and self.bodySpacing or 0)
+      if index < #self.children then
+        cursorY = cursorY + childH + self.bodySpacing
+      else
+        cursorY = cursorY + childH
+      end
     end
   end
 end

@@ -62,7 +62,12 @@ function InventoryUI:render(ui, icons, width)
     :setAutoSize(true, true)
     :setTitleSpacing(layout.headerSpacing or 16)
     :setTitleText('Inventory')
-    :setBodySpacing(layout.bodySpacing or 18)
+    :setBodySpacing(0)
+
+  local stack = ui:createStack()
+    :setDirection('vertical')
+    :setSpacing(layout.bodySpacing or 18)
+    :setAnchor('top_left')
 
   local wallet = self.app.inventory and self.app.inventory:getWallet()
   if wallet then
@@ -70,7 +75,7 @@ function InventoryUI:render(ui, icons, width)
       :setText(('Wallet: %d'):format(wallet.balance or 0))
       :setScale(layout.walletScale)
       :setAnchor('top_left')
-    panel:addChild(walletLabel)
+    stack:addChild(walletLabel)
   end
 
   local grid = ui:createSlotGrid()
@@ -84,7 +89,9 @@ function InventoryUI:render(ui, icons, width)
     :setItems(toItemList(self.app.inventory and self.app.inventory:getInventory()))
     :setAnchor('top_left')
 
-  panel:addChild(grid)
+  stack:addChild(grid)
+
+  panel:addChild(stack)
   ui:add(panel)
 end
 
