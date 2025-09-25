@@ -173,6 +173,13 @@ function SlotGrid:draw(pass, originX, originY)
         iconSize = self.slotSize,
         icon = item.icon
       }
+          -- Merge in any per-item icon options
+    local opts = item.iconOptions
+    if opts then
+      for k, v in pairs(opts) do
+        descriptor[k] = v
+      end
+    end
       local icon = self.iconRenderer:getIcon(item.icon, descriptor)
       if icon and icon.material then
         local extent = math.max(0, self.slotSize - self.iconPadding * 2)
