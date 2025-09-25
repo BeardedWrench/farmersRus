@@ -120,7 +120,12 @@ function IconRenderer:renderModelIcon(key, modelPath, options)
 
   lovr.graphics.submit(pass)
 
-  local material = lovr.graphics.newMaterial(texture)
+  local ok, result = pcall(function()
+    return lovr.graphics.newMaterial({ texture = texture })
+  end)
+  local material = ok and result or lovr.graphics.newMaterial(texture)
+  
+  -- local material = lovr.graphics.newMaterial(texture)
   return {
     texture = texture,
     material = material,
